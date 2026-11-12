@@ -1,4 +1,5 @@
 import csv
+import os
 import tkinter as tk
 from datetime import datetime
 from tkinter import ttk, messagebox, filedialog
@@ -16,6 +17,7 @@ COLUMN_TITLES = {
 NUMERIC_COLUMNS = ("id", "quantity", "price")
 ERROR_COLOR = "#ffb3b3"
 NORMAL_COLOR = "white"
+CONFIG_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "last_file.txt")
 
 
 class CsvStorage:
@@ -81,6 +83,29 @@ class InventoryApp:
         self.create_menu()
         self.create_widgets()
         self.root.protocol("WM_DELETE_WINDOW", self.on_close)
+        self.load_last_file()
+
+    def remember_path(self, path):
+        try:
+            with open(CONFIG_FILE, "w", encoding="utf-8") as f:
+                f.write(path)
+        except OSError:
+            pass
+
+    def load_last_file(self):
+        if not os.path.exists(CONFIG_FILE):
+            return
+        try:
+            with open(CONFIG_FILE, "r", encoding="utf-8") as f:
+                path = f.read().strip()
+            if not path or not os.path.exists(path):
+                return
+            self.items = self.storage.load(path)
+        except (OSError, UnicodeDecodeError, csv.Error, ValueError):
+            self.set_status("Не вдалося завантажити останній файл")
+            return
+        self.refresh_table()
+        self.set_status("Завантажено останній файл: " + path)
 
     def create_menu(self):
         menubar = tk.Menu(self.root)
@@ -399,6 +424,7 @@ class InventoryApp:
             return
         self.items = items
         self.modified = False
+        self.remember_path(path)
         self.clear_form()
         self.refresh_table()
         self.set_status("Завантажено записів: " + str(len(items)) + " (" + path + ")")
@@ -426,6 +452,7 @@ class InventoryApp:
             self.set_status("Помилка збереження")
             return False
         self.modified = False
+        self.remember_path(path)
         self.set_status("Збережено: " + path)
         return True
 
